@@ -47,6 +47,7 @@ fn main() -> Result<()> {
   let args : Vec<String> = env::args().collect();
   if args.len() < 8 {
     println!("Usage: ./{} [database_file] [leaks_file] [table_name] [username_index] [password_index] [delimiter] [should_init]", args[0]);
+    return Ok(());
   }
   let conn = Connection::open(&args[1])?;
   if args[7] == "1" {
