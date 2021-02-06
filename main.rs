@@ -9,10 +9,12 @@ fn init_db(conn : &Connection) -> Result<()>{
 }
 
 fn create_table(conn : &Connection, table_name : &String) -> Result<()> {
-  let result = conn.execute("SELECT * FROM leak_tables WHERE table_name = ?", params![table_name])?;
-  if result == 0 {
-    conn.execute("CREATE TABLE ? (username, password, other_info)", params![])?;
-    conn.execute("INSERT INTO leak_tables VALUE (?, ?)", params![table_name, table_name])?;
+  let mut stmt = conn.prepare("SELECT * FROM leak_tables WHERE table_name = ?")?;
+  let result = stmt.exists(params![table_name]);
+  if !result.unwrap() {
+    conn.execute(format!("CREATE TABLE {} (username, password, other_info)", table_name).as_ref(), params![])?;
+    println!("Table created");
+    conn.execute("INSERT INTO leak_tables VALUES (?, ?)", params![table_name, table_name])?;
   }
   Ok(())
 }
@@ -20,7 +22,7 @@ fn create_table(conn : &Connection, table_name : &String) -> Result<()> {
 fn populate_table(conn : &Connection, table_name : &String, path : &String, un_i : usize, pw_i : usize, delimiter : &String) -> Result<()> {
   let file = File::open(path).unwrap();
   let reader = BufReader::new(file);
-  let mut query = conn.prepare("INSERT INTO ? VALUES (?, ?, ?)")?;
+  let mut query = conn.prepare(format!("INSERT INTO {} VALUES (?, ?, ?)", table_name).as_ref())?;
   let mut total = 0;
   for line in reader.lines() {
     let tline = line.unwrap();
@@ -28,7 +30,7 @@ fn populate_table(conn : &Connection, table_name : &String, path : &String, un_i
     let un = info.swap_remove(un_i);
     let pw = info.swap_remove(if pw_i > un_i {pw_i-1} else {pw_i});
     let other = if info.len() == 0 {String::from("NULL")} else {info.join(",")};
-    let params = params![table_name, un, pw, other];
+    let params = params![un, pw, other];
     //if (info.len() == 0) {
     //  params[3] = &Null;
     //} else {
